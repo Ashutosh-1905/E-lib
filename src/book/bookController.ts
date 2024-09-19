@@ -4,6 +4,7 @@ import path from "node:path";
 import createHttpError from "http-errors";
 import bookModel from "./bookModel";
 import fs from "node:fs";
+import { AuthRequest } from "../middlewares/authanticate";
 
 interface MulterFiles {
   coverImage?: Express.Multer.File[];
@@ -53,8 +54,6 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
       folder: "book-covers",
     });
 
-    console.log("coverImageUpload : ", coverImageUpload);
-
     // Upload the book PDF
     const bookFileUpload = await cloudinary.uploader.upload(bookFilePath, {
       resource_type: "raw",
@@ -62,15 +61,15 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
       format: "pdf",
     });
 
-    console.log("bookFileUpload : ", bookFileUpload);
 
-    // console.log("userId:", req.userId);
+    const _req = req as AuthRequest;
+
 
     // Save book data to the database
     const newBook = await bookModel.create({
       title,
       genre,
-      author: "66eaa6b4d7688053ecdbae85",
+      author:_req.userId,
       coverImage: coverImageUpload.secure_url,
       file: bookFileUpload.secure_url,
     });
