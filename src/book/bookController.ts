@@ -5,12 +5,21 @@ import createHttpError from "http-errors";
 import bookModel from "./bookModel";
 import fs from "node:fs";
 
+interface MulterFiles {
+  coverImage?: Express.Multer.File[];
+  file?: Express.Multer.File[];
+}
+
 const createBook = async (req: Request, res: Response, next: NextFunction) => {
   const { title, genre } = req.body;
 
-  console.log("files", req.files);
+  const files = req.files as MulterFiles;
 
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+  if (!files?.coverImage?.[0] || !files?.file?.[0]) {
+    return res
+      .status(400)
+      .json({ error: "Both coverImage and file are required." });
+  }
 
   const coverImage = files.coverImage[0];
   const bookFile = files.file[0];
@@ -39,16 +48,25 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
   );
 
   try {
+    // Upload the cover image
     const coverImageUpload = await cloudinary.uploader.upload(coverImagePath, {
       folder: "book-covers",
     });
 
+    console.log("coverImageUpload : ", coverImageUpload);
+
+    // Upload the book PDF
     const bookFileUpload = await cloudinary.uploader.upload(bookFilePath, {
       resource_type: "raw",
       folder: "book-pdfs",
       format: "pdf",
     });
 
+    console.log("bookFileUpload : ", bookFileUpload);
+
+    // console.log("userId:", req.userId);
+
+    // Save book data to the database
     const newBook = await bookModel.create({
       title,
       genre,
@@ -57,7 +75,7 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
       file: bookFileUpload.secure_url,
     });
 
-    // Delete temporary files after successful upload
+    // Delete the temporary files after uploading
     await fs.promises.unlink(coverImagePath);
     await fs.promises.unlink(bookFilePath);
 
@@ -66,7 +84,6 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
       .json({ id: newBook._id, message: "Book created successfully" });
   } catch (error) {
     console.error("Error while uploading files: ", error);
-
     return next(createHttpError(500, "Error while uploading the files."));
   }
 };
