@@ -107,7 +107,13 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
 
     let updates: { [key: string]: any } = {};
 
-    // Handle cover image
+    const book = await bookModel.findOne({ _id: bookId, author: _req.userId });
+
+    if (!book) {
+      return next(createHttpError(404, "Book not found or unauthorized."));
+    }
+
+    // Handle cover image update
     if (files?.coverImage?.[0]) {
       const coverImage = files.coverImage[0];
       const coverImageExtension = coverImage.originalname
@@ -122,12 +128,20 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
         );
       }
 
+      // Delete the previous cover image from Cloudinary
+      const coverFileSplits = book.coverImage.split("/");
+      const coverImagePublicId = `${coverFileSplits.at(-2)}/${coverFileSplits
+        .at(-1)
+        ?.split(".")
+        .at(-2)}`;
+      await cloudinary.uploader.destroy(coverImagePublicId);
+
+      // Upload the new cover image to Cloudinary
       const coverImagePath = path.resolve(
         __dirname,
         "../../public/data/uploads",
         coverImage.filename
       );
-
       const coverImageUpload = await cloudinary.uploader.upload(
         coverImagePath,
         {
@@ -139,15 +153,26 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
       await fs.promises.unlink(coverImagePath);
     }
 
-    // Handle book file
+    // Handle book file update
     if (files?.file?.[0]) {
       const bookFile = files.file[0];
+
+      // Delete the previous book file from Cloudinary
+      const bookFileSplits = book.file.split("/");
+      const bookFilePublicId = `${bookFileSplits.at(-2)}/${bookFileSplits
+        .at(-1)
+        ?.split(".")
+        .at(-2)}`;
+      await cloudinary.uploader.destroy(bookFilePublicId, {
+        resource_type: "raw",
+      });
+
+      // Upload the new book file to Cloudinary
       const bookFilePath = path.resolve(
         __dirname,
         "../../public/data/uploads",
         bookFile.filename
       );
-
       const bookFileUpload = await cloudinary.uploader.upload(bookFilePath, {
         resource_type: "raw",
         folder: "book-pdfs",
