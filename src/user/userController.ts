@@ -46,7 +46,7 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
       expiresIn: "7d",
     });
 
-    res.status(201).json({ accessToken: token });
+    res.status(201).json({ Success: true, message:"User Created Successfully.", accessToken: token });
     next();
   } catch (err) {
     return next(createHttpError(500, "Error While signing jwt token"));
@@ -79,7 +79,13 @@ const loginUser = async (req: Request, res: Response, next: NextFunction) => {
       expiresIn: "7d",
     });
 
-    res.status(201).json({ accessToken: token });
+    res
+      .status(201)
+      .json({
+        Success: true,
+        message: "User Login Successfully.",
+        accessToken: token,
+      });
      next();
      
   } catch (err) {
