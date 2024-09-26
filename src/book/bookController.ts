@@ -14,7 +14,7 @@ interface MulterFiles {
 
 // CREATE BOOK
 const createBook = async (req: Request, res: Response, next: NextFunction) => {
-  const { title, genre } = req.body;
+  const { title, genre, description } = req.body;
   const files = req.files as MulterFiles;
 
   // Validate required files
@@ -69,6 +69,7 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
     // Create new book entry
     const newBook = await bookModel.create({
       title,
+      description,
       genre,
       author: _req.userId,
       coverImage: _coverImageUpload.secure_url,
@@ -98,7 +99,7 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
 
 // UPDATE BOOK
 const updateBook = async (req: Request, res: Response, next: NextFunction) => {
-  const { title, genre } = req.body;
+  const { title, genre, description } = req.body;
   const bookId = req.params.bookId;
 
   try {
@@ -185,6 +186,8 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
 
     if (title) updates.title = title;
     if (genre) updates.genre = genre;
+    if (description) updates.description = description;
+
 
     const updatedBook = await bookModel.findOneAndUpdate(
       { _id: bookId, author: _req.userId },

@@ -9,25 +9,22 @@ import { User } from "./userTypes";
 const createUser = async (req: Request, res: Response, next: NextFunction) => {
   const { name, email, password } = req.body;
 
-  // validation
+  // Validation
   if (!name || !email || !password) {
-    const error = createHttpError(400, "All field are required");
-    return next(error);
+    return next(createHttpError(400, "All fields are required"));
   }
-  // database call.
+
+  // Database call
   try {
     const user = await userModel.findOne({ email: email });
     if (user) {
-      const error = createHttpError(
-        400,
-        "User already exists with this email."
-      );
-      return next(error);
+      return next(createHttpError(400, "User already exists with this email."));
     }
   } catch (err) {
-    return next(createHttpError(500, "Error While getting user"));
+    return next(createHttpError(500, "Error while getting user"));
   }
-  // password -> hash.
+
+  // Hash the password
   const hashedPassword = await bcrypt.hash(password, 10);
   let newUser: User;
   try {
@@ -37,62 +34,57 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
       password: hashedPassword,
     });
   } catch (err) {
-    return next(createHttpError(500, "error While Creating User"));
+    return next(createHttpError(500, "Error while creating user"));
   }
 
-  // generate token.
+  // Generate token
   try {
     const token = sign({ sub: newUser._id }, config.jwtSecret as string, {
       expiresIn: "7d",
     });
 
-    res.status(201).json({ Success: true, message:"User Created Successfully.", accessToken: token });
-    next();
+    return res.status(201).json({
+      Success: true,
+      message: "User created successfully.",
+      accessToken: token,
+    });
   } catch (err) {
-    return next(createHttpError(500, "Error While signing jwt token"));
+    return next(createHttpError(500, "Error while signing JWT token"));
   }
 };
 
 const loginUser = async (req: Request, res: Response, next: NextFunction) => {
-  
   const { email, password } = req.body;
-  if (!email || !password) {
-    return next(createHttpError(400, "All Fields are required"));
-  }
 
-  const user = await userModel.findOne({ email });
-   if (!user) {
-     return next(createHttpError(404, "User not not Found"));
+  if (!email || !password) {
+    return next(createHttpError(400, "All fields are required"));
   }
 
   try {
-    const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-    return next(createHttpError(400, "Email or Password are incorrect !"))
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return next(createHttpError(404, "User not found"));
     }
-  } catch (err) {
-    return next(createHttpError(500, "Bcrypt password error"));
-  }
 
-   try {
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return next(createHttpError(400, "Email or password are incorrect!"));
+    }
+
+    // Generate token
     const token = sign({ sub: user._id }, config.jwtSecret as string, {
       expiresIn: "7d",
     });
 
-    res
-      .status(201)
-      .json({
-        Success: true,
-        message: "User Login Successfully.",
-        accessToken: token,
-      });
-     next();
-     
+    return res.status(200).json({
+      Success: true,
+      message: "User login successfully.",
+      accessToken: token,
+    });
   } catch (err) {
-    return next(createHttpError(500, "Error While signing jwt token"));
+    return next(createHttpError(500, "Bcrypt password error"));
   }
-
-  res.json({ Message: "OK" });
 };
+
 
 export { createUser, loginUser };
